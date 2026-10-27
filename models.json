@@ -4,6 +4,11 @@
    "id": "grunt",
    "name": "Combine Grunt",
    "src": "Soldier_reference"
+  },
+  {
+   "id": "zombie",
+   "name": "Zombie",
+   "src": "Zombie_reference"
   }
  ]
 }
