@@ -9,12 +9,6 @@
    "id": "zombie",
    "name": "Zombie",
    "src": "Zombie_reference"
-  },
-  {
-   "id": "teto",
-   "name": "Teto",
-   "src": "teto_reference",
-   "animType": "female"
   }
  ]
 }
