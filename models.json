@@ -9,6 +9,11 @@
    "id": "zombie",
    "name": "Zombie",
    "src": "Zombie_reference"
+  },
+  {
+   "id": "shotgunner",
+   "name": "Combine Shotgunner",
+   "src": "Soldier_reference"
   }
  ]
 }
