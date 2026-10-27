@@ -9,11 +9,6 @@
    "id": "zombie",
    "name": "Zombie",
    "src": "Zombie_reference"
-  },
-  {
-   "id": "skyghost",
-   "name": "Skyghost",
-   "src": "skyghost_reference"
   }
  ]
 }
