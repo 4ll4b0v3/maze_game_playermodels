@@ -14,6 +14,10 @@ layout that the game loads from the playermodels repo).
   3. Check the live preview (drag = rotate, right-drag = pan, wheel = zoom).
   4. Pick the output folder (your local clone of the playermodels repo) and
      press Export.  models.json is created/updated automatically.
+  5. Animations: "Animation type" in step 3 chooses which animation set the model
+     uses (male = Mike's built-in set, the default).  "Add animation set..."
+     converts an animation-only .mdl + .ani (e.g. the female or male anm pair)
+     into <repo>/anims/<name>/ so it shows up in that dropdown.
 
 First launch installs numpy + pillow automatically if they are missing.
 """
@@ -78,7 +82,7 @@ _ensure_deps()
 import numpy as np
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, colorchooser
+from tkinter import ttk, filedialog, messagebox, colorchooser, simpledialog
 
 
 # --------------------------------------------------------------------------
@@ -613,6 +617,175 @@ class Previewer:
 # --------------------------------------------------------------------------
 #  helpers
 # --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+#  Animation sets  (animation-only Source .mdl + .ani  ->  anims/<name>/)
+# --------------------------------------------------------------------------
+RESERVED_ANIM = ("male", "mike")
+# game clip name -> (animation name inside the .mdl, loops)
+ANIM_CLIPS = {"idle": ("@idle_all_01", 1), "cidle": ("@cidle_all", 1), "jump": ("@jump_passive", 0)}
+for _d in "NSEW":
+    ANIM_CLIPS["walk" + _d] = ("a_Walk" + _d, 1)
+    ANIM_CLIPS["cwalk" + _d] = ("a_Cwalk" + _d, 1)
+    ANIM_CLIPS["run" + _d] = ("a_Run" + _d, 1)
+
+
+def convert_anim_set(mdl_path, ani_path, out_dir):
+    """Writes out_dir/meta.json + anim.bin.gz.  Returns (n_bones, n_clips, missing_clip_names)."""
+    with open(mdl_path, "rb") as f:
+        M = f.read()
+    with open(ani_path, "rb") as f:
+        A = f.read()
+    if M[:4] != b"IDST":
+        raise ValueError("Not a Source .mdl file.")
+
+    def I(b, o):
+        return struct.unpack_from("<i", b, o)[0]
+
+    def cstr(o):
+        return M[o:M.index(b"\0", o)].decode("latin-1")
+
+    o = 76 + 4 + 72 + 4
+    nbones, bone_i = I(M, o), I(M, o + 4)
+    nanim, anim_i = I(M, o + 24), I(M, o + 28)
+    H = struct.unpack_from("<" + "i" * 51, M, o)
+    nblocks, blockidx = H[49], H[50]
+    blocks = [struct.unpack_from("<ii", M, blockidx + i * 8) for i in range(nblocks)]
+    bones = []
+    for i in range(nbones):
+        b = bone_i + i * 216
+        no, par = struct.unpack_from("<ii", M, b)
+        bones.append(dict(n=cstr(b + no), p=par, pos=struct.unpack_from("<3f", M, b + 32),
+                          rot=struct.unpack_from("<3f", M, b + 60), ps=struct.unpack_from("<3f", M, b + 72),
+                          rs=struct.unpack_from("<3f", M, b + 84)))
+
+    def e2q(x, y, z):
+        sr, cr, sp, cp, sy, cy = (math.sin(x / 2), math.cos(x / 2), math.sin(y / 2),
+                                  math.cos(y / 2), math.sin(z / 2), math.cos(z / 2))
+        return (sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy,
+                cr * cp * sy - sr * sp * cy, cr * cp * cy + sr * sp * sy)
+
+    def q48(b, o):
+        s0, s1, s2 = struct.unpack_from("<HHH", b, o)
+        x = (s0 - 32768) / 32768.0
+        y = (s1 - 32768) / 32768.0
+        z = ((s2 & 0x7fff) - 16384) / 16384.0
+        w = math.sqrt(max(0.0, 1 - x * x - y * y - z * z))
+        return (x, y, z, -w if s2 & 0x8000 else w)
+
+    def q64(b, o):
+        v = struct.unpack_from("<Q", b, o)[0]
+        x = ((v & 0x1FFFFF) - 1048576) / 1048576.5
+        y = (((v >> 21) & 0x1FFFFF) - 1048576) / 1048576.5
+        z = (((v >> 42) & 0x1FFFFF) - 1048576) / 1048576.5
+        w = math.sqrt(max(0.0, 1 - x * x - y * y - z * z))
+        return (x, y, z, -w if (v >> 63) & 1 else w)
+
+    def axis(b, base, off, frame):
+        if off == 0:
+            return 0
+        p = base + off
+        while b[p + 1] <= frame:
+            frame -= b[p + 1]
+            p += (b[p] + 1) * 2
+        return struct.unpack_from("<h", b, p + 2 * (frame + 1 if b[p] > frame else b[p]))[0]
+
+    descs = {}
+    for i in range(nanim):
+        b = anim_i + i * 100
+        descs.setdefault(cstr(b + I(M, b + 4)), b)
+
+    def frame_pose(doff, nframes, f):
+        blk, idx, sec, secf = I(M, doff + 52), I(M, doff + 56), I(M, doff + 80), I(M, doff + 84)
+        fr = f
+        if secf:
+            if nframes > secf and fr == nframes - 1:
+                fr, si = 0, nframes // secf + 1
+            else:
+                si = fr // secf
+                fr -= si * secf
+            blk, idx = struct.unpack_from("<ii", M, doff + sec + si * 8)
+        buf, p = (A, blocks[blk][0] + idx) if blk else (M, doff + idx)
+        out = [(bn["pos"], e2q(*bn["rot"])) for bn in bones]
+        while True:
+            bi, fl, nxt = buf[p], buf[p + 1], struct.unpack_from("<h", buf, p + 2)[0]
+            if bi == 255:
+                break
+            bn = bones[bi]
+            d = p + 4
+            pos, q = bn["pos"], out[bi][1]
+            rotsz = 6 if fl & 0x0A else (8 if fl & 0x20 else 0)
+            if fl & 0x08:
+                o3 = struct.unpack_from("<3h", buf, d)
+                q = e2q(*[axis(buf, d, o3[k], fr) * bn["rs"][k] + bn["rot"][k] for k in range(3)])
+            elif fl & 0x02:
+                q = q48(buf, d)
+            elif fl & 0x20:
+                q = q64(buf, d)
+            pd = d + rotsz
+            if fl & 0x04:
+                o3 = struct.unpack_from("<3h", buf, pd)
+                pos = tuple(axis(buf, pd, o3[k], fr) * bn["ps"][k] + bn["pos"][k] for k in range(3))
+            elif fl & 0x01:
+                pos = struct.unpack_from("<3e", buf, pd)
+            out[bi] = (pos, q)
+            if nxt == 0:
+                break
+            p += nxt
+        return out
+
+    def s16(v, sc):
+        return max(-32768, min(32767, int(round(v * sc))))
+
+    binary = bytearray()
+    meta = {"bones": [dict(n=b["n"], p=b["p"], pos=list(b["pos"]), rot=list(b["rot"])) for b in bones], "clips": []}
+    missing = []
+    for cname, (dn, loop) in ANIM_CLIPS.items():
+        if dn not in descs:
+            missing.append(cname)
+            continue
+        off = descs[dn]
+        fps, nf = struct.unpack_from("<f", M, off + 8)[0], I(M, off + 16)
+        frames, prev = [], None
+        for f in range(nf):
+            row, raw = [], []
+            for j, (pos, q) in enumerate(frame_pose(off, nf, f)):
+                l = math.sqrt(sum(c * c for c in q)) or 1.0
+                q = tuple(c / l for c in q)
+                if prev and sum(a * b for a, b in zip(q, prev[j])) < 0:
+                    q = tuple(-c for c in q)
+                row.append(q)
+                raw.append(struct.pack("<7h", *[s16(c, 128) for c in pos], *[s16(c, 32767) for c in q]))
+            frames.append(b"".join(raw))
+            prev = row
+        # Source loops use numframes-1 as the cycle: the last frame duplicates the first, drop it
+        if loop and len(frames) > 1 and frames[-1] == frames[0]:
+            frames.pop()
+        meta["a_" + cname] = len(binary)
+        meta["clips"].append(dict(n=cname, f=len(frames), fps=fps, loop=loop))
+        for fr in frames:
+            binary += fr
+    if "idle" not in [c["n"] for c in meta["clips"]]:
+        raise ValueError("This .mdl has no '@idle_all_01' animation - is it an animation-only model (e.g. m_anm / f_anm)?")
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "meta.json"), "w") as f:
+        json.dump(meta, f, separators=(",", ":"))
+    with open(os.path.join(out_dir, "anim.bin.gz"), "wb") as f:
+        f.write(gzip.compress(bytes(binary), 9))
+    return len(bones), len(meta["clips"]), missing
+
+
+def list_anim_sets(out):
+    """animation sets available in <out>/anims (folders that contain meta.json)"""
+    found = []
+    try:
+        for n in sorted(os.listdir(os.path.join(out, "anims"))):
+            if re.fullmatch(r"[\w-]+", n) and os.path.exists(os.path.join(out, "anims", n, "meta.json")):
+                found.append(n)
+    except Exception:  # noqa: BLE001
+        pass
+    return found
+
+
 CFG_PATH = os.path.join(os.path.expanduser("~"), ".playermodel_maker.json")
 
 
@@ -703,10 +876,12 @@ class App:
         self.var_alpha = tk.BooleanVar(value=True)
         self.var_maxtex = tk.StringVar(value="1024")
         self.var_out = tk.StringVar(value=self.cfg.get("out", ""))
+        self.var_anim = tk.StringVar(value="male")
         self.var_wire = tk.BooleanVar(value=False)
         self.var_bones = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value="Add your SMD files to begin.")
         self.build_ui()
+        self.refresh_anim_types()
 
     # ---- ui ---------------------------------------------------------------
     def build_ui(self):
@@ -778,6 +953,10 @@ class App:
                         command=self.schedule_rebuild).grid(row=3, column=0, columnspan=4, sticky="w")
         ttk.Checkbutton(f3, text="Drop texture alpha (VTF alpha is usually a specular mask)", variable=self.var_alpha
                         ).grid(row=4, column=0, columnspan=4, sticky="w")
+        ttk.Label(f3, text="Animation type").grid(row=5, column=0, sticky="w", pady=(4, 0))
+        self.cb_anim = ttk.Combobox(f3, textvariable=self.var_anim, width=16, state="readonly", values=("male",))
+        self.cb_anim.grid(row=5, column=1, sticky="w", padx=4, pady=(4, 0))
+        ttk.Label(f3, text="male = Mike's animations (default)", foreground="#666").grid(row=5, column=2, columnspan=2, sticky="w", pady=(4, 0))
         f3.columnconfigure(1, weight=1)
         f3.columnconfigure(3, weight=1)
 
@@ -787,7 +966,8 @@ class App:
         ttk.Label(f4, text="Output folder (playermodels repo)").grid(row=0, column=0, columnspan=2, sticky="w")
         ttk.Entry(f4, textvariable=self.var_out).grid(row=1, column=0, sticky="ew")
         ttk.Button(f4, text="Browse...", command=self.browse_out).grid(row=1, column=1, padx=(4, 0))
-        ttk.Button(f4, text="Export playermodel", command=self.export_model).grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0), ipady=4)
+        ttk.Button(f4, text="Add animation set (.mdl + .ani)...", command=self.add_anim_set).grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        ttk.Button(f4, text="Export playermodel", command=self.export_model).grid(row=3, column=0, columnspan=2, sticky="ew", pady=(6, 0), ipady=4)
         f4.columnconfigure(0, weight=1)
 
         # preview
@@ -1079,6 +1259,72 @@ class App:
             self.var_out.set(d)
             self.cfg["out"] = d
             save_cfg(self.cfg)
+            self.refresh_anim_types()
+
+    def refresh_anim_types(self, select=None):
+        vals = ["male"] + [n for n in list_anim_sets(self.var_out.get().strip()) if n not in RESERVED_ANIM]
+        self.cb_anim.configure(values=vals)
+        if select in vals:
+            self.var_anim.set(select)
+        elif self.var_anim.get() not in vals:
+            self.var_anim.set("male")
+
+    def add_anim_set(self):
+        out = self.var_out.get().strip()
+        if not out:
+            self.browse_out()
+            out = self.var_out.get().strip()
+            if not out:
+                return
+        mdl = filedialog.askopenfilename(title="Animation-only .mdl (e.g. f_anm.mdl / m_anm.mdl)",
+                                         filetypes=(("Source model", "*.mdl"), ("All files", "*.*")))
+        if not mdl:
+            return
+        ani = os.path.splitext(mdl)[0] + ".ani"
+        if not os.path.exists(ani):
+            ani = filedialog.askopenfilename(title="Matching .ani file", initialdir=os.path.dirname(mdl),
+                                             filetypes=(("Source animations", "*.ani"), ("All files", "*.*")))
+            if not ani:
+                return
+        stem = os.path.splitext(os.path.basename(mdl))[0].lower()
+        guess = "female" if stem.startswith("f") else re.sub(r"[^\w-]", "", stem) or "anims"
+        name = simpledialog.askstring("Playermodel Maker",
+                                      "Name for this animation set (this is the animType in models.json).\n"
+                                      "Letters, digits, _ and - only.  'male' is reserved for Mike's built-in set.",
+                                      initialvalue=guess, parent=self.root)
+        if not name:
+            return
+        name = name.strip()
+        if not re.fullmatch(r"[\w-]+", name):
+            messagebox.showwarning("Playermodel Maker", "Name may only contain letters, digits, _ and -.")
+            return
+        if name.lower() in RESERVED_ANIM:
+            messagebox.showwarning("Playermodel Maker", "'%s' is reserved for the built-in set - pick another name." % name)
+            return
+        dest = os.path.join(out, "anims", name)
+        if os.path.exists(os.path.join(dest, "meta.json")):
+            if not messagebox.askyesno("Playermodel Maker", "Animation set '%s' already exists. Overwrite it?" % name):
+                return
+        self.root.config(cursor="watch")
+        self.status.set("Converting animations ...")
+        self.root.update_idletasks()
+        try:
+            nb, nc, missing = convert_anim_set(mdl, ani, dest)
+        except Exception as ex:  # noqa: BLE001
+            traceback.print_exc()
+            self.status.set("Animation conversion failed.")
+            messagebox.showerror("Playermodel Maker", "Animation conversion failed:\n\n%s" % ex)
+            return
+        finally:
+            self.root.config(cursor="")
+        self.cfg["out"] = out
+        save_cfg(self.cfg)
+        self.refresh_anim_types(select=name)
+        msg = "Added animation set '%s'\n\n%s\n  meta.json, anim.bin.gz\n%d bones, %d clips.\n\nIt is now selected as the Animation type. Upload the anims/%s folder to your playermodels repo." % (name, dest, nb, nc, name)
+        if missing:
+            msg += "\n\nNot found in this .mdl (game falls back to idle for these): " + ", ".join(missing)
+        self.status.set("Added animation set %s" % name)
+        messagebox.showinfo("Playermodel Maker", msg)
 
     def export_model(self):
         try:
@@ -1161,13 +1407,18 @@ class App:
                 data = {"models": []}
         entry = {"id": mid, "name": self.var_name.get().strip() or mid,
                  "src": ", ".join(os.path.basename(p) for p in self.smds)}
+        at = self.var_anim.get().strip()
+        if at and at.lower() not in RESERVED_ANIM:
+            entry["animType"] = at
+            if not os.path.exists(os.path.join(out, "anims", at, "meta.json")):
+                messagebox.showwarning("Playermodel Maker", "Note: anims/%s/ was not found in the output folder - add it with 'Add animation set...' or the game will fall back to Mike's animations." % at)
         data["models"] = [e for e in data["models"] if not (isinstance(e, dict) and e.get("id") == mid)] + [entry]
         with open(mj, "w") as f:
             json.dump(data, f, indent=1)
 
         msg = ("Exported '%s'\n\n%s\n  meta.json, model.bin.gz, %d texture(s)\n%s (updated)\n\n"
-               "%d verts, %d tris, %d bones.\n\nUpload the '%s' folder and models.json to your playermodels repo."
-               % (mid, folder, len(texfiles), mj, len(self.mesh.P), len(self.mesh.tris), len(self.mesh.bones), mid))
+               "%d verts, %d tris, %d bones.\nAnimation type: %s\n\nUpload the '%s' folder and models.json to your playermodels repo."
+               % (mid, folder, len(texfiles), mj, len(self.mesh.P), len(self.mesh.tris), len(self.mesh.bones), entry.get("animType", "male (default)"), mid))
         if missing:
             msg += "\n\nNo texture set for: " + ", ".join(missing) + "  (exported as magenta)"
         self.status.set("Exported %s -> %s" % (mid, folder))
