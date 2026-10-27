@@ -3,7 +3,7 @@
   {
    "id": "grunt",
    "name": "Combine Grunt",
-   "src": "Soldier_reference.smd + backpack.smd"
+   "src": "Soldier_reference"
   }
  ]
 }
