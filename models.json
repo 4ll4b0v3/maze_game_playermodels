@@ -14,6 +14,11 @@
    "id": "shotgunner",
    "name": "Combine Shotgunner",
    "src": "Soldier_reference"
+  },
+  {
+   "id": "worker",
+   "name": "Combine Worker",
+   "src": "Police_reference2.smd"
   }
  ]
 }
