@@ -24,6 +24,11 @@
    "id": "zombie",
    "name": "Zombie",
    "src": "Zombie_reference"
+  },
+  {
+   "id": "zombine",
+   "name": "Zombine",
+   "src": "Zombie_Soldier_reference.smd, Headcrab_reference.smd"
   }
  ]
 }
