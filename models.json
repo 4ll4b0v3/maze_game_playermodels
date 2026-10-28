@@ -21,6 +21,12 @@
    "src": "ct_urban_reference"
   },
   {
+   "id": "chell",
+   "name": "Chell",
+   "src": "chell.smd",
+   "animType": "female"
+  },
+  {
    "id": "zombie",
    "name": "Zombie",
    "src": "Zombie_reference"
