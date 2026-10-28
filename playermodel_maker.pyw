@@ -892,9 +892,60 @@ class App:
             pass
         main = ttk.Frame(self.root, padding=6)
         main.pack(fill="both", expand=True)
-        left = ttk.Frame(main, width=480)
-        left.pack(side="left", fill="y")
-        left.pack_propagate(False)
+        # left column lives inside a scrollable canvas so every section
+        # (incl. 4 Export) stays reachable on small screens / high DPI
+        left_outer = ttk.Frame(main, width=500)
+        left_outer.pack(side="left", fill="y")
+        left_outer.pack_propagate(False)
+        try:
+            bgc = style.lookup("TFrame", "background") or self.root.cget("bg")
+        except Exception:  # noqa: BLE001
+            bgc = self.root.cget("bg")
+        self.left_canvas = lc = tk.Canvas(left_outer, highlightthickness=0, bd=0, bg=bgc)
+        left_sb = ttk.Scrollbar(left_outer, orient="vertical", command=lc.yview)
+        lc.configure(yscrollcommand=left_sb.set)
+        left_sb.pack(side="right", fill="y")
+        lc.pack(side="left", fill="both", expand=True)
+        left = ttk.Frame(lc)
+        left_win = lc.create_window((0, 0), window=left, anchor="nw")
+
+        def _fit_left(_e=None):
+            # inner frame is at least as tall as the canvas (so the materials
+            # list still stretches on big windows) but can grow past it -> scroll
+            h = max(lc.winfo_height(), left.winfo_reqheight())
+            lc.itemconfigure(left_win, width=lc.winfo_width(), height=h)
+            lc.configure(scrollregion=(0, 0, lc.winfo_width(), h))
+            if left.winfo_reqheight() <= lc.winfo_height():
+                lc.yview_moveto(0)
+
+        left.bind("<Configure>", _fit_left)
+        lc.bind("<Configure>", _fit_left)
+
+        def _over_left(w):
+            while w is not None:
+                if w is left_outer:
+                    return True
+                w = w.master
+            return False
+
+        def _left_wheel(e, direction=None):
+            try:
+                w = self.root.winfo_containing(e.x_root, e.y_root)
+            except Exception:  # noqa: BLE001
+                return
+            if w is None or not _over_left(w):
+                return
+            if isinstance(w, (tk.Listbox, ttk.Treeview)):  # they scroll themselves
+                return
+            if left.winfo_reqheight() <= lc.winfo_height():
+                return
+            if direction is None:
+                direction = -1 if e.delta > 0 else 1
+            lc.yview_scroll(direction * 2, "units")
+
+        self.root.bind_all("<MouseWheel>", _left_wheel, add="+")
+        self.root.bind_all("<Button-4>", lambda e: _left_wheel(e, -1), add="+")
+        self.root.bind_all("<Button-5>", lambda e: _left_wheel(e, 1), add="+")
         right = ttk.Frame(main)
         right.pack(side="left", fill="both", expand=True, padx=(8, 0))
 
@@ -913,7 +964,7 @@ class App:
         # 2 materials
         f2 = ttk.LabelFrame(left, text=" 2  Materials  ->  textures ", padding=6)
         f2.pack(fill="both", expand=True, pady=(8, 0))
-        self.tree = ttk.Treeview(f2, columns=("mat", "tex"), show="headings", height=9, selectmode="extended")
+        self.tree = ttk.Treeview(f2, columns=("mat", "tex"), show="headings", height=6, selectmode="extended")
         self.tree.heading("mat", text="Material in SMD")
         self.tree.heading("tex", text="Texture (VTF / PNG) or colour")
         self.tree.column("mat", width=150)
