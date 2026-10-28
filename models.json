@@ -1,29 +1,29 @@
 {
-  "models": [
-    {
-      "id": "grunt",
-      "name": "Combine Grunt",
-      "src": "Soldier_reference"
-    },
-    {
-      "id": "shotgunner",
-      "name": "Combine Shotgunner",
-      "src": "Soldier_reference"
-    },
-    {
-      "id": "worker",
-      "name": "Combine Worker",
-      "src": "Police_reference2"
-    },
-    {
-      "id": "ct_urban_reference",
-      "name": "Urban",
-      "src": "ct_urban_reference"
-    },
-    {
-      "id": "zombie",
-      "name": "Zombie",
-      "src": "Zombie_reference"
-    }
-  ]
+ "models": [
+  {
+   "id": "grunt",
+   "name": "Combine Grunt",
+   "src": "Soldier_reference"
+  },
+  {
+   "id": "shotgunner",
+   "name": "Combine Shotgunner",
+   "src": "Soldier_reference"
+  },
+  {
+   "id": "worker",
+   "name": "Combine Worker",
+   "src": "Police_reference2.smd"
+  },
+  {
+   "id": "ct_urban_reference",
+   "name": "Urban",
+   "src": "ct_urban_reference"
+  },
+  {
+   "id": "zombie",
+   "name": "Zombie",
+   "src": "Zombie_reference"
+  },
+ ]
 }
