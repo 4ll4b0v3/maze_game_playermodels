@@ -33,6 +33,11 @@
    "animType": "female"
   },
   {
+   "id": "vortigaunt",
+   "name": "Vortigaunt",
+   "src": "hevort_ref.smd"
+  },
+  {
    "id": "zombie",
    "name": "Zombie",
    "src": "Zombie_reference"
