@@ -23,19 +23,19 @@
   {
    "id": "chell",
    "name": "Chell",
-   "src": "chell.smd",
+   "src": "chell",
    "animType": "female"
   },
   {
    "id": "alyx",
    "name": "Alyx",
-   "src": "alyx_reference.smd",
+   "src": "alyx_reference",
    "animType": "female"
   },
   {
    "id": "vortigaunt",
    "name": "Vortigaunt",
-   "src": "hevort_ref.smd"
+   "src": "hevort_ref"
   },
   {
    "id": "zombie",
@@ -45,12 +45,12 @@
   {
    "id": "zombine",
    "name": "Zombine",
-   "src": "Zombie_Soldier_reference.smd, Headcrab_reference.smd"
+   "src": "Zombie_Soldier_reference, Headcrab_reference"
   },
   {
    "id": "jiggletest",
    "name": "Jiggly Player",
-   "src": "playertemp.smd",
+   "src": "playertemp",
    "hidden": 1
   }
  ]
