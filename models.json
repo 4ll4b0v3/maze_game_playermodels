@@ -39,7 +39,8 @@
   {
    "id": "jiggletest",
    "name": "Jiggly Player",
-   "src": "playertemp.smd"
+   "src": "playertemp.smd",
+   "hidden": 1
   }
  ]
 }
