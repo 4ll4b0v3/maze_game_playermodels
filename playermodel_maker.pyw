@@ -14,6 +14,8 @@ layout that the game loads from the playermodels repo).
   3. Check the live preview (drag = rotate, right-drag = pan, wheel = zoom).
   4. Pick the output folder (your local clone of the playermodels repo) and
      press Export.  models.json is created/updated automatically.
+     Optional: "Jigglebones" loads the $jigglebone blocks of a .qc (or a JSON
+     list) and stores them in the model's meta.json; the game then simulates them.
   5. Animations: "Animation type" in step 3 chooses which animation set the model
      uses (male = Mike's built-in set, the default).  "Add animation set..."
      converts an animation-only .mdl + .ani (e.g. the female or male anm pair)
@@ -850,6 +852,56 @@ def safe_name(s, fallback="x"):
 # --------------------------------------------------------------------------
 #  GUI
 # --------------------------------------------------------------------------
+def _strip_qc_comments(t):
+    return re.sub(r"//[^\n]*", "", re.sub(r"/\*[\s\S]*?\*/", "", t))
+
+
+def parse_jiggle_text(text):
+    """Accepts a full .qc, just its $jigglebone blocks, or a JSON list/map.
+    Returns (data, bone_names): data is a cleaned QC string or a JSON object (what the game reads from meta.json 'jiggle')."""
+    t = text.strip().lstrip("\ufeff")
+    if t[:1] in "[{" and t:
+        obj = json.loads(t)
+        if isinstance(obj, dict) and isinstance(obj.get("jiggle"), (list, dict)):
+            obj = obj["jiggle"]
+        if isinstance(obj, list):
+            names = [str(o.get("bone") or o.get("name") or "") for o in obj if isinstance(o, dict)]
+        elif isinstance(obj, dict):
+            names = [str(k) for k in obj]
+        else:
+            raise ValueError("JSON must be a list of {bone: ...} objects or a {boneName: {...}} map.")
+        return obj, names
+    t = _strip_qc_comments(t)
+    blocks, names = [], []
+    for m in re.finditer(r"\$jigglebone\b", t, re.I):
+        i = t.find("{", m.end())
+        if i < 0:
+            continue
+        head = t[m.end():i].strip().strip('"')
+        depth, j = 0, i
+        while j < len(t):
+            depth += (t[j] == "{") - (t[j] == "}")
+            j += 1
+            if depth == 0:
+                break
+        if depth != 0:
+            raise ValueError("Unbalanced braces in the $jigglebone block for '%s'." % head)
+        blocks.append(t[m.start():j])
+        names.append(head)
+    if not blocks:
+        raise ValueError("No $jigglebone blocks found.")
+    return "\n".join(blocks), names
+
+
+def jiggle_missing(names, bones):
+    have = set()
+    for b in bones:
+        n = b["n"].lower()
+        have.add(n)
+        have.add(n.replace("valvebiped.", ""))
+    return [n for n in names if n.lower() not in have]
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -867,6 +919,9 @@ class App:
         self._draw_job = None
         self._rebuild_job = None
         self._drag = None
+        self.jiggle = None          # QC text or JSON object -> meta.json "jiggle"
+        self.jiggle_names = []
+        self.var_jig = tk.StringVar(value="none")
 
         self.var_id = tk.StringVar()
         self.var_name = tk.StringVar()
@@ -1011,6 +1066,16 @@ class App:
         f3.columnconfigure(1, weight=1)
         f3.columnconfigure(3, weight=1)
 
+        # 3b jigglebones
+        fj = ttk.LabelFrame(left, text=" Jigglebones (optional) ", padding=6)
+        fj.pack(fill="x", pady=(8, 0))
+        ttk.Button(fj, text="Load .qc / .json...", command=self.load_jiggle).grid(row=0, column=0, sticky="ew")
+        ttk.Button(fj, text="Paste...", command=self.paste_jiggle).grid(row=0, column=1, sticky="ew", padx=4)
+        ttk.Button(fj, text="Clear", command=self.clear_jiggle).grid(row=0, column=2, sticky="ew")
+        ttk.Label(fj, textvariable=self.var_jig, foreground="#666", wraplength=420, justify="left").grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        for c in range(3):
+            fj.columnconfigure(c, weight=1)
+
         # 4 export
         f4 = ttk.LabelFrame(left, text=" 4  Export ", padding=6)
         f4.pack(fill="x", pady=(8, 0))
@@ -1043,6 +1108,58 @@ class App:
         self.info = ttk.Label(bar, text="")
         self.info.pack(side="right")
         ttk.Label(self.root, textvariable=self.status, relief="sunken", anchor="w", padding=(6, 2)).pack(fill="x", side="bottom")
+
+    # ---- jigglebones --------------------------------------------------------
+    def _set_jiggle(self, text):
+        try:
+            data, names = parse_jiggle_text(text)
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("Playermodel Maker", "Could not read the jigglebone data:\n\n%s" % ex)
+            return
+        self.jiggle, self.jiggle_names = data, names
+        self.refresh_jiggle_label()
+        if self.mesh:
+            miss = jiggle_missing(names, self.mesh.bones)
+            if miss:
+                messagebox.showwarning("Playermodel Maker", "These jigglebones are not bones of the current model and will be ignored by the game:\n\n" + ", ".join(miss))
+
+    def refresh_jiggle_label(self):
+        if self.jiggle is None:
+            self.var_jig.set("none")
+            return
+        txt = "%d jigglebone(s): %s" % (len(self.jiggle_names), ", ".join(self.jiggle_names[:8]) + (" ..." if len(self.jiggle_names) > 8 else ""))
+        if self.mesh:
+            miss = jiggle_missing(self.jiggle_names, self.mesh.bones)
+            if miss:
+                txt += "\nnot in model: " + ", ".join(miss)
+        self.var_jig.set(txt)
+
+    def load_jiggle(self):
+        p = filedialog.askopenfilename(title="QC file (or JSON) with $jigglebone blocks",
+                                       filetypes=[("QC / JSON", "*.qc *.qci *.json *.txt"), ("All files", "*.*")])
+        if not p:
+            return
+        with open(p, "r", encoding="utf-8", errors="replace") as f:
+            self._set_jiggle(f.read())
+
+    def paste_jiggle(self):
+        w = tk.Toplevel(self.root)
+        w.title("Paste jigglebones")
+        w.geometry("640x420")
+        ttk.Label(w, text="Paste the $jigglebone blocks from your QC (a whole QC is fine), or a JSON list:").pack(anchor="w", padx=8, pady=(8, 2))
+        t = tk.Text(w, wrap="none")
+        t.pack(fill="both", expand=True, padx=8)
+        def ok():
+            s = t.get("1.0", "end").strip()
+            if s:
+                self._set_jiggle(s)
+            w.destroy()
+        ttk.Button(w, text="OK", command=ok).pack(pady=8)
+        t.focus_set()
+
+    def clear_jiggle(self):
+        self.jiggle, self.jiggle_names = None, []
+        self.refresh_jiggle_label()
 
     # ---- smd list -----------------------------------------------------------
     def add_smds(self):
@@ -1140,6 +1257,7 @@ class App:
         self.update_preview_mats()
         m = self.mesh
         self.info.config(text="%d verts   %d tris   %d bones   %d materials" % (len(m.P), len(m.tris), len(m.bones), len(m.mats)))
+        self.refresh_jiggle_label()
         self.status.set("Merged %d SMD file(s)." % len(self.smds))
 
     def refresh_tree(self):
@@ -1441,6 +1559,8 @@ class App:
                 missing.append(name)
 
         meta, binary = build_model_files(self.mesh, texfiles, mats_json)
+        if self.jiggle is not None:
+            meta["jiggle"] = self.jiggle
         with open(os.path.join(folder, "meta.json"), "w") as f:
             json.dump(meta, f, separators=(",", ":"))
         with open(os.path.join(folder, "model.bin.gz"), "wb") as f:
@@ -1470,6 +1590,11 @@ class App:
         msg = ("Exported '%s'\n\n%s\n  meta.json, model.bin.gz, %d texture(s)\n%s (updated)\n\n"
                "%d verts, %d tris, %d bones.\nAnimation type: %s\n\nUpload the '%s' folder and models.json to your playermodels repo."
                % (mid, folder, len(texfiles), mj, len(self.mesh.P), len(self.mesh.tris), len(self.mesh.bones), entry.get("animType", "male (default)"), mid))
+        if self.jiggle is not None:
+            msg += "\n\nJigglebones written to meta.json: %d" % len(self.jiggle_names)
+            jm = jiggle_missing(self.jiggle_names, self.mesh.bones)
+            if jm:
+                msg += "\n(not bones of this model, ignored in-game: %s)" % ", ".join(jm)
         if missing:
             msg += "\n\nNo texture set for: " + ", ".join(missing) + "  (exported as magenta)"
         self.status.set("Exported %s -> %s" % (mid, folder))
