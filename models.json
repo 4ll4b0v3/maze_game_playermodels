@@ -27,6 +27,12 @@
    "animType": "female"
   },
   {
+   "id": "alyx",
+   "name": "Alyx",
+   "src": "alyx_reference.smd",
+   "animType": "female"
+  },
+  {
    "id": "zombie",
    "name": "Zombie",
    "src": "Zombie_reference"
