@@ -57,6 +57,12 @@
    "name": "Jiggly Player",
    "src": "playertemp",
    "hidden": 1
+  },
+  {
+   "id": "skyghost",
+   "name": "Skyghost",
+   "src": "skyghostnpc.smd",
+   "animType": "female"
   }
  ]
 }
