@@ -62,7 +62,8 @@
    "id": "skyghost",
    "name": "Skyghost",
    "src": "skyghostnpc.smd",
-   "animType": "female"
+   "animType": "female",
+   "hidden": 1
   }
  ]
 }
