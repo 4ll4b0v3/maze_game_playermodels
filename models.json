@@ -6,6 +6,11 @@
    "src": "Soldier_reference"
   },
   {
+   "id": "ordinal",
+   "name": "Combine Ordinal",
+   "src": "Soldier_reference"
+  },
+  {
    "id": "shotgunner",
    "name": "Combine Shotgunner",
    "src": "Soldier_reference"
