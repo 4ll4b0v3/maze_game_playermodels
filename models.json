@@ -3,7 +3,7 @@
   {
    "id": "prisonguard",
    "name": "Combine Prison Guard",
-   "src": "Soldier_reference.smd"
+   "src": "Soldier_reference"
   },
   {
    "id": "grunt",
