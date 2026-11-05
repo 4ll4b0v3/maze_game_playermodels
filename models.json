@@ -1,6 +1,11 @@
 {
  "models": [
   {
+   "id": "prisonguard",
+   "name": "Combine Prison Guard",
+   "src": "Soldier_reference.smd"
+  },
+  {
    "id": "grunt",
    "name": "Combine Grunt",
    "src": "Soldier_reference"
