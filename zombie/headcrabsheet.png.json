@@ -1,6 +1,7 @@
 {
   "$basetexture": "shared/headcrabsheet.png",
   "$bumpmap": "shared/headcrabsheet_normal.png",
+  "$normalalphamask": 1,
   //"$selfillummask": "shared/combine_selfillum.png",
   //"$nrmflipg": -1
 }

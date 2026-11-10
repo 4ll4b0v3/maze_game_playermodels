@@ -1,6 +1,7 @@
 {
   "$basetexture": "baked.png",
   "$bumpmap": "baked_normal.png",
+  "$normalalphamask": 1,
   "$selfillummask": "shared/combine_selfillum.png",
   //"$nrmflipg": -1
 }

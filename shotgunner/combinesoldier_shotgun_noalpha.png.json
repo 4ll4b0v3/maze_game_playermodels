@@ -2,5 +2,6 @@
   "$basetexture": "combinesoldier_shotgun_noalpha.png",
   "$bumpmap": "shared/combine_normal.png",
   "$selfillummask": "shared/combine_selfillum.png",
+  "$normalalphamask": 1,
   //"$nrmflipg": -1
 }

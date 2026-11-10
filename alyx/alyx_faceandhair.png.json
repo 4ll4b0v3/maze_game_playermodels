@@ -1,6 +1,7 @@
 {
   "$basetexture": "alyx_faceandhair.png",
   "$bumpmap": "alyx_faceandhair_normal.png",
+  "$normalalphamask": 1,
   //"$selfillummask": "body_selfillum.png",
   //"$nrmflipg": -1
 }

@@ -1,6 +1,7 @@
 {
   "$basetexture": "combinesoldiersheet_zombie2.png",
   "$bumpmap": "combinesoldiersheet_zombie2_normal.png",
+  "$normalalphamask": 1,
   //"$selfillummask": "shared/combine_selfillum.png",
   //"$nrmflipg": -1
 }

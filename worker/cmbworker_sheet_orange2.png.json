@@ -1,6 +1,7 @@
 {
   "$basetexture": "cmbworker_sheet_orange2.png",
   "$bumpmap": "cmbworker_sheet_orange2_normal.png",
+  "$normalalphamask": 1,
   //"$selfillummask": "shared/combine_selfillum.png",
   //"$nrmflipg": -1
 }

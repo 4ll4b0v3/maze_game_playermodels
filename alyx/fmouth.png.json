@@ -1,6 +1,7 @@
 {
   "$basetexture": "fmouth.png",
   "$bumpmap": "fmouth_normal.png",
+  "$normalalphamask": 1,
   //"$selfillummask": "body_selfillum.png",
   //"$nrmflipg": -1
 }
