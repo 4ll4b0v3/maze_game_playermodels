@@ -1,7 +1,16 @@
 {
-  "$basetexture": "ordinal_armpads.png",
-  "$bumpmap": "shared/combine_normal.png",
-  "$normalalphamask": 1,
-  "$selfillummask": "shared/combine_selfillum.png",
+  "$basetexture" "ordinal_armpads.png"
+  "$bumpmap" "shared/combine_normal.png"
+  "$normalalphamask" 1
+  "$selfillummask" "shared/combine_selfillum.png"
+  "$selfillum" 1
+  "$normalalphamask" 1
+  "$model" 1
+  "$phong" 1
+  "$phongboost" "5"
+  "$halflambert" "1"
+  "$phongexponenttexture" "shared/combine_phong"
+  "$phongalbedotint" "1"                                        
+  "$phongfresnelranges"    "[.1 .5 1.0]"
   //"$nrmflipg": -1
 }
