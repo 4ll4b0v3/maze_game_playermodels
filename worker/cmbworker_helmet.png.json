@@ -1,0 +1,6 @@
+{
+  "$basetexture": "cmbworker_helmet.png",
+  "$bumpmap": "cmbworker_helmet_normal.png",
+  //"$selfillummask": "shared/combine_selfillum.png",
+  //"$nrmflipg": -1
+}

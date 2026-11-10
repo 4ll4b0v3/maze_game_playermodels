@@ -1,0 +1,6 @@
+{
+  "$basetexture": "vortigaunt_base.png",
+  "$bumpmap": "vortigaunt_base_normal.png",
+  //"$selfillummask": "shared/combine_selfillum.png",
+  //"$nrmflipg": -1
+}

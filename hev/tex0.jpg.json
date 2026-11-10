@@ -1,0 +1,6 @@
+{
+  "$basetexture": "tex0.jpg",
+  "$bumpmap": "tex0_normal.png",
+  //"$selfillummask": "body_selfillum.png",
+  //"$nrmflipg": -1
+}

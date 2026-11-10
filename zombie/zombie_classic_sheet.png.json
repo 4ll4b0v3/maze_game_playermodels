@@ -1,0 +1,6 @@
+{
+  "$basetexture": "zombie_classic_sheet.png",
+  "$bumpmap": "zombie_classic_sheet_normal.png",
+  //"$selfillummask": "shared/combine_selfillum.png",
+  //"$nrmflipg": -1
+}

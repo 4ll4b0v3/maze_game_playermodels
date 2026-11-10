@@ -1,0 +1,6 @@
+{
+  "$basetexture": "ordinal_sheet.png",
+  "$bumpmap": "ordinal_sheet_normal.png",
+  "$selfillummask": "ordinal_sheet_selfillum.png",
+  //"$nrmflipg": -1
+}
