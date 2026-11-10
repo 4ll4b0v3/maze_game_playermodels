@@ -2,6 +2,7 @@
   "$basetexture" "tex"
   "$bumpmap" "shared/combine_normal"
   "$selfillummask" "shared/combine_selfillum"
+  "$selfillum" 1
   "$normalalphamask" 1
   "$model" 1
   "$phong" 1
