@@ -1,7 +1,11 @@
 {
-  "$basetexture": "zombie_classic_sheet.png",
-  "$bumpmap": "zombie_classic_sheet_normal.png",
-  "$normalalphamask": 1,
+  "$basetexture" "zombie_classic_sheet.png"
+  "$bumpmap" "zombie_classic_sheet_normal.png"
+  "$normalalphamask" 1
+  "$phong" "1"
+  "$phongboost" "5"
+  "$phongfresnelranges"	"[0.1 .5  1]"
+  "$phongexponent" 30
   //"$selfillummask": "shared/combine_selfillum.png",
   //"$nrmflipg": -1
 }
