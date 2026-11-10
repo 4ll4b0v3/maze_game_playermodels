@@ -1,7 +1,14 @@
 {
-  "$basetexture": "tex.jpg",
-  "$bumpmap": "shared/combine_normal.png",
-  "$selfillummask": "shared/combine_selfillum.png",
-  "$normalalphamask": 1,
+  "$basetexture" "tex"
+  "$bumpmap" "shared/combine_normal"
+  "$selfillummask" "shared/combine_selfillum"
+  "$normalalphamask" 1
+  "$model" 1
+  "$phong" 1
+  "$phongboost" "5"
+  "$halflambert" "1"
+  "$phongexponenttexture" "shared/combine_phong"
+  "$phongalbedotint" "1"                                        
+  "$phongfresnelranges"    "[.1 .5 1.0]"
   //"$nrmflipg": -1
 }
