@@ -1,7 +1,13 @@
 {
-  "$basetexture": "combinesoldiersheet_zombie2.png",
-  "$bumpmap": "combinesoldiersheet_zombie2_normal.png",
-  "$normalalphamask": 1,
+  "$basetexture" "combinesoldiersheet_zombie2.png"
+  "$bumpmap" "combinesoldiersheet_zombie2_normal.png"
+  "$normalalphamask" 1
+"$phong" "1"
+	"$phongboost" "3"
+	"$halflambert" "1"
+	"$phongexponenttexture" "phong"
+	"$phongalbedotint" "1"										
+	"$phongfresnelranges"	"[.1 .5  1]"
   //"$selfillummask": "shared/combine_selfillum.png",
   //"$nrmflipg": -1
 }
